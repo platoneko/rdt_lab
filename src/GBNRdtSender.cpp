@@ -10,7 +10,6 @@ GBNRdtSender::GBNRdtSender(int n, int seqNumBits):
 {
     base = 0;
     nextSeqNum = 0;
-    pkts = vector<Packet>(n);
 }
 
 GBNRdtSender::~GBNRdtSender()
@@ -26,7 +25,7 @@ bool GBNRdtSender::send(const Message &message) {
 		return false;
 	}
     Packet pkt = makeDataPkt(nextSeqNum, message.data);
-    pkts[nextSeqNum % N] = pkt;
+    pkts[nextSeqNum] = pkt;
 	pUtils->printPacket("发送方发送报文", pkt);
     pns->sendToNetworkLayer(RECEIVER, pkt);
     if (base == nextSeqNum)
@@ -58,8 +57,8 @@ void GBNRdtSender::timeoutHandler(int seqNum) {
 	// 唯一一个定时器,无需考虑seqNum
     pns->stopTimer(SENDER, 0);
     for (int i = base; i != nextSeqNum; i = (i + 1) % MAX_SEQ) {
-	    pUtils->printPacket("重发报文", pkts[i % N]);
-        pns->sendToNetworkLayer(RECEIVER, pkts[i % N]);
+	    pUtils->printPacket("重发报文", pkts[i]);
+        pns->sendToNetworkLayer(RECEIVER, pkts[i]);
     }
     // 重新启动发送方定时器
 	pns->startTimer(SENDER, Configuration::TIME_OUT, 0); 

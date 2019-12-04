@@ -1,6 +1,6 @@
 #ifndef GBN_RDT_RECEIVER_H
 #define GBN_RDT_RECEIVER_H
-#include "../include/RdtReceiver.h"
+#include "RdtReceiver.h"
 
 class GBNRdtReceiver : public RdtReceiver {
 private:
