@@ -5,16 +5,24 @@
 #include "../include/StopWaitRdtReceiver.h"
 #include "../include/GBNRdtSender.h"
 #include "../include/GBNRdtReceiver.h"
+#include "../include/SRRdtSender.h"
+#include "../include/SRRdtReceiver.h"
+
 int main() {
 #ifdef GBN
-    auto *ps = new GBNRdtSender(4, 3);
+    auto *ps = new GBNRdtSender(7, 3);
     auto *pr = new GBNRdtReceiver(3);
     printf("-*- This is GBN -*-\n\n");
+#elif SR
+    auto *ps = new SRRdtSender(7, 4);
+    auto *pr = new SRRdtReceiver(7, 4);
+    printf("-*- This is SR -*-\n\n");
 #else
     auto *ps = new StopWaitRdtSender();
     auto *pr = new StopWaitRdtReceiver();
     printf("-*- This is StopWait -*-\n\n");
 #endif
+    // pns->setRunMode(1);  //安静模式
     pns->init();
     pns->setRtdSender(ps);
     pns->setRtdReceiver(pr);
