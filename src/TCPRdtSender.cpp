@@ -25,7 +25,6 @@ bool TCPRdtSender::getWaitingState() {
 
 bool TCPRdtSender::send(const Message &message) {
 	if (getWaitingState()) {  // 发送方处于等待确认状态
-        printf("发送方窗口[%d, %d]\n", base, nextSeqNum);
 		return false;
 	}
     Packet pkt = makeDataPkt(nextSeqNum, message.data);
@@ -37,19 +36,23 @@ bool TCPRdtSender::send(const Message &message) {
     	pns->startTimer(SENDER, Configuration::TIME_OUT, 0);
     }
     nextSeqNum = (nextSeqNum + 1) % MAX_SEQ;
-    printf("发送方窗口[%d, %d]\n", base, nextSeqNum);
-    fflush(stdout);
 	return true;
 }
 
 void TCPRdtSender::receive(const Packet &ackPkt) {
+    printf("发送方窗口：");
+    for (int i = base; i != nextSeqNum; i = (i+1)%MAX_SEQ)
+        printf("%d ", pkts[i].seqnum);
+    printf("\n");
 	// 检查校验和是否正确
 	int checkSum = pUtils->calculateCheckSum(ackPkt);
 	// 如果校验和正确
 	if (checkSum == ackPkt.checksum) {
-        if (inWindow(ackPkt.acknum)) {
+        int ackNum = ackPkt.acknum - 1;
+        if (ackNum < 0) ackNum += MAX_SEQ;
+        if (inWindow(ackNum)) {
             pUtils->printPacket("发送方正确收到确认", ackPkt);
-            while (base != ackPkt.acknum) {  // 清除缓存
+            while (base != ackNum) {  // 清除缓存
                 pkts.erase(base);
                 base = (base + 1) % MAX_SEQ;
             }
@@ -72,8 +75,6 @@ void TCPRdtSender::receive(const Packet &ackPkt) {
 	} else {
 		pUtils->printPacket("发送方没有正确收到确认", ackPkt);
 	}
-    printf("发送方窗口[%d, %d]\n", base, nextSeqNum);
-    fflush(stdout);
 }
 
 void TCPRdtSender::timeoutHandler(int seqNum) {

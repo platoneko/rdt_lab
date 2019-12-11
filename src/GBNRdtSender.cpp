@@ -36,6 +36,10 @@ bool GBNRdtSender::send(const Message &message) {
 }
 
 void GBNRdtSender::receive(const Packet &ackPkt) {
+    printf("发送方窗口：");
+    for (int i = base; i != nextSeqNum; i = (i+1)%MAX_SEQ)
+        printf("%d ", pkts[i].seqnum);
+    printf("\n");
 	// 检查校验和是否正确
 	int checkSum = pUtils->calculateCheckSum(ackPkt);
 	// 如果校验和正确

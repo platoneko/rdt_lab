@@ -20,8 +20,8 @@ int main() {
     auto *pr = new SRRdtReceiver(7, 4);
     printf("-*- This is SR -*-\n\n");
 #elif TCP
-    auto *ps = new TCPRdtSender(7, 4);
-    auto *pr = new TCPRdtReceiver(7, 4);
+    auto *ps = new TCPRdtSender(4, 3);
+    auto *pr = new TCPRdtReceiver(4, 3);
     printf("-*- This is TCP -*-\n\n");
 #else
     auto *ps = new StopWaitRdtSender();

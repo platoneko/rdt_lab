@@ -28,7 +28,6 @@ bool SRRdtSender::getWaitingState() {
 
 bool SRRdtSender::send(const Message &message) {
 	if (getWaitingState()) {  // 发送方处于等待确认状态
-        printf("发送方窗口[%d, %d]\n", base, nextSeqNum);
 		return false;
 	}
     Packet pkt = makeDataPkt(nextSeqNum, message.data);
@@ -38,12 +37,15 @@ bool SRRdtSender::send(const Message &message) {
     // 启动发送方定时器
 	pns->startTimer(SENDER, Configuration::TIME_OUT, nextSeqNum);  
     nextSeqNum = (nextSeqNum + 1) % MAX_SEQ;
-    printf("发送方窗口[%d, %d]\n", base, nextSeqNum);
     fflush(stdout);
 	return true;
 }
 
 void SRRdtSender::receive(const Packet &ackPkt) {
+    printf("发送方窗口：");
+    for (int i = base; i != nextSeqNum; i = (i+1)%MAX_SEQ)
+        printf("%d ", pkts[i].first.seqnum);
+    printf("\n");    
 	// 检查校验和是否正确
 	int checkSum = pUtils->calculateCheckSum(ackPkt);
 	// 如果校验和正确
@@ -66,7 +68,6 @@ void SRRdtSender::receive(const Packet &ackPkt) {
 	} else {
 		pUtils->printPacket("发送方没有正确收到确认", ackPkt);
 	}
-    printf("发送方窗口[%d, %d]\n", base, nextSeqNum);
     fflush(stdout);
 }
 

@@ -40,8 +40,6 @@ void SRRdtReceiver::receive(const Packet &packet) {
     if (checkSum == packet.checksum) {
         pUtils->printPacket("接收方正确收到发送方的报文", packet);
         if (inWindow(packet.seqnum)) {
-            printf("在接收方窗口[%d, %d]内\n", base, (base + N - 1)%MAX_SEQ);
-            fflush(stdout);
             Packet ackPkt = makeAckPkt(packet.seqnum);
 	        pns->sendToNetworkLayer(SENDER, ackPkt);
             if (!cache.count(packet.seqnum)) {  // 不在缓存区中
@@ -61,14 +59,10 @@ void SRRdtReceiver::receive(const Packet &packet) {
                 }
             }
         } else if (inPrevWindow(packet.seqnum)) {
-            printf("在接收方前窗口[%d, %d]内\n", base - N, base - 1);
-            fflush(stdout);
             Packet ackPkt = makeAckPkt(packet.seqnum);
 	        pns->sendToNetworkLayer(SENDER, ackPkt);
         }
     } else {
         pUtils->printPacket("接收方没有正确收到发送方的报文,数据校验错误", packet);
     }
-    printf("接收方窗口[%d, %d]\n", base, (base + N - 1)%MAX_SEQ);
-    fflush(stdout);
 }
