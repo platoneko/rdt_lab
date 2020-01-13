@@ -52,8 +52,8 @@ void TCPRdtSender::receive(const Packet &ackPkt) {
             pkts.erase(prevSeqNum);
         }
         pUtils->printPacket("发送方正确收到确认", ackPkt);
-        pns->stopTimer(SENDER, 0);
         if (base == nextSeqNum) {
+            pns->stopTimer(SENDER, 0);
             lastAckNum = base;
             cnt = 0;
         } else if (base == lastAckNum) {
@@ -63,11 +63,9 @@ void TCPRdtSender::receive(const Packet &ackPkt) {
                 pns->sendToNetworkLayer(RECEIVER, pkts[base]);
                 cnt = 0;
             }
-            pns->startTimer(SENDER, Configuration::TIME_OUT, 0); 
         } else {
             lastAckNum = base;
             cnt = 0;
-            pns->startTimer(SENDER, Configuration::TIME_OUT, 0);
         }
 	}
 	else {
