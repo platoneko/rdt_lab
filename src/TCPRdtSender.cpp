@@ -1,22 +1,21 @@
-#include "../include/utils.h"
+
+#include "../include/Global.h"
 #include "../include/TCPRdtSender.h"
+#include "../include/utils.h"
+
 
 TCPRdtSender::TCPRdtSender(int n, int seqNumBits):
     MAX_SEQ((seqNumBits > 0 && seqNumBits <= 16) ? (1 << seqNumBits) : (1 << 16)), 
     N(n)
 {
+    base = 0;
+    nextSeqNum = 0;
+    cnt = 0;
+    lastAckNum = -1;
 }
 
 TCPRdtSender::~TCPRdtSender()
 {
-}
-
-inline bool TCPRdtSender::inWindow(int ackNum) {
-    if (base == nextSeqNum)  // base == nextSeqNum == 0
-        return false;
-    if (base < nextSeqNum)
-        return base <= ackNum && ackNum < nextSeqNum;
-    return nextSeqNum > ackNum || ackNum >= base;  // 序号循环
 }
 
 bool TCPRdtSender::getWaitingState() {
@@ -31,10 +30,9 @@ bool TCPRdtSender::send(const Message &message) {
     pkts[nextSeqNum] = pkt;
 	pUtils->printPacket("发送方发送报文", pkt);
     pns->sendToNetworkLayer(RECEIVER, pkt);
+    if (base == nextSeqNum)
     // 启动发送方定时器
-    if (nextSeqNum == base) {
-    	pns->startTimer(SENDER, Configuration::TIME_OUT, 0);
-    }
+	    pns->startTimer(SENDER, Configuration::TIME_OUT, 0);  
     nextSeqNum = (nextSeqNum + 1) % MAX_SEQ;
 	return true;
 }
@@ -48,38 +46,45 @@ void TCPRdtSender::receive(const Packet &ackPkt) {
 	int checkSum = pUtils->calculateCheckSum(ackPkt);
 	// 如果校验和正确
 	if (checkSum == ackPkt.checksum) {
-        int ackNum = ackPkt.acknum - 1;
-        if (ackNum < 0) ackNum += MAX_SEQ;
-        if (inWindow(ackNum)) {
-            pUtils->printPacket("发送方正确收到确认", ackPkt);
-            while (base != ackNum) {  // 清除缓存
-                pkts.erase(base);
-                base = (base + 1) % MAX_SEQ;
-            }
-            pkts.erase(base);                // 清除缓存
-            base = (base + 1) % MAX_SEQ;
-            ackCount = 0;
-            pns->stopTimer(SENDER, 0);
-            if (base != nextSeqNum) {
-                pns->startTimer(SENDER, Configuration::TIME_OUT, 0);
-            }      
-        } else {
-            pUtils->printPacket("发送方收到之前的确认", ackPkt);
-            ++ackCount;
-            if (ackCount == 3) {
-                pns->sendToNetworkLayer(RECEIVER, pkts[base]);
-                pUtils->printPacket("收到3个冗余ACK，快速重传报文", pkts[base]);
-                ackCount = 0;               
-            } 
+        base = ackPkt.acknum;
+        int prevSeqNum = (ackPkt.acknum-1 < 0)? ackPkt.acknum-1+MAX_SEQ : ackPkt.acknum-1;
+        if (pkts.count(prevSeqNum)) {
+            pkts.erase(prevSeqNum);
         }
-	} else {
+        pUtils->printPacket("发送方正确收到确认", ackPkt);
+        pns->stopTimer(SENDER, 0);
+        if (base == nextSeqNum) {
+            lastAckNum = base;
+            cnt = 0;
+        } else if (base == lastAckNum) {
+            ++cnt;
+            if (cnt == 3) {
+                pUtils->printPacket("3个冗余ACK，快速重传", pkts[base]);
+                pns->sendToNetworkLayer(RECEIVER, pkts[base]);
+                cnt = 0;
+            }
+            pns->startTimer(SENDER, Configuration::TIME_OUT, 0); 
+        } else {
+            lastAckNum = base;
+            cnt = 0;
+            pns->startTimer(SENDER, Configuration::TIME_OUT, 0);
+        }
+	}
+	else {
 		pUtils->printPacket("发送方没有正确收到确认", ackPkt);
 	}
 }
 
 void TCPRdtSender::timeoutHandler(int seqNum) {
+    int n = nextSeqNum - base;
+    if (n < 0) n += MAX_SEQ;
+    printf("发送方定时器时间到，重发%d个报文", n);
+	// 唯一一个定时器,无需考虑seqNum
     pns->stopTimer(SENDER, 0);
-    pns->sendToNetworkLayer(RECEIVER, pkts[base]);
-    pUtils->printPacket("发送方定时器时间到，重发超时的报文", pkts[base]);
-    pns->startTimer(SENDER, Configuration::TIME_OUT, 0);
+    for (int i = base; i != nextSeqNum; i = (i + 1) % MAX_SEQ) {
+	    pUtils->printPacket("重发报文", pkts[i]);
+        pns->sendToNetworkLayer(RECEIVER, pkts[i]);
+    }
+    // 重新启动发送方定时器
+	pns->startTimer(SENDER, Configuration::TIME_OUT, 0); 
 }

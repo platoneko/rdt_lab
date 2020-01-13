@@ -49,8 +49,10 @@ void GBNRdtSender::receive(const Packet &ackPkt) {
             pkts.erase(ackPkt.acknum);
         }
         pUtils->printPacket("发送方正确收到确认", ackPkt);
-        if (base == nextSeqNum)
-            pns->stopTimer(SENDER, 0);
+        pns->stopTimer(SENDER, 0);
+        if (base != nextSeqNum) {
+            pns->startTimer(SENDER, Configuration::TIME_OUT, 0);
+        }
 	}
 	else {
 		pUtils->printPacket("发送方没有正确收到确认", ackPkt);
